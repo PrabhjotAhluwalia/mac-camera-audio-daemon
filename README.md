@@ -48,6 +48,17 @@ Status:
 ./status.sh
 ```
 
+## End-to-end duration test
+
+Run the duration-filter smoke test:
+
+```bash
+chmod +x test_duration_filter.sh
+./test_duration_filter.sh
+```
+
+It compiles a temporary daemon binary, simulates one short camera session and one long camera session, then verifies that only the long session leaves a recording file.
+
 ## Notes
 
 - This records **microphone audio**, not remote-party system audio.

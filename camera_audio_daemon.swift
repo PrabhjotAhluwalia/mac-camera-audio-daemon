@@ -13,6 +13,8 @@ final class CameraAudioDaemon: NSObject {
   private var isCameraInUse = false
   private var isMicPermissionGranted = false
   private let forceRecord = ProcessInfo.processInfo.environment["CAMERA_AUDIO_DAEMON_FORCE_RECORD"] == "1"
+  private let lockPath = ProcessInfo.processInfo.environment["CAMERA_AUDIO_DAEMON_LOCK_PATH"]
+    ?? "/tmp/com.prabhjot.camera-audio-daemon.lock"
   private var lockFileDescriptor: Int32 = -1
 
   init(outputDir: URL, minimumSessionDurationSeconds: TimeInterval = 60) {
@@ -279,7 +281,6 @@ final class CameraAudioDaemon: NSObject {
   }
 
   private func acquireSingleInstanceLock() -> Bool {
-    let lockPath = "/tmp/com.prabhjot.camera-audio-daemon.lock"
     lockFileDescriptor = open(lockPath, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
     if lockFileDescriptor == -1 { return true }
 
