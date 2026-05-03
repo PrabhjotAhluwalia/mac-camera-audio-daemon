@@ -5,7 +5,8 @@ This utility runs in the background on macOS and:
 1. Detects when any camera is actively in use by another app.
 2. Starts microphone recording automatically when camera turns on.
 3. Stops recording automatically when camera turns off.
-4. Creates a separate file for each on/off camera session.
+4. Keeps a separate file for each on/off camera session that lasts more than 1 minute.
+5. Discards short camera sessions of 60 seconds or less.
 
 Use only where recording is legal and everyone who needs to consent has consented.
 
@@ -52,4 +53,5 @@ Status:
 - This records **microphone audio**, not remote-party system audio.
 - It works for browser and non-browser apps as long as camera usage is detected by macOS AVFoundation.
 - If microphone permission is denied, no recording files will be produced.
+- Very short camera sessions are deleted automatically and will not appear in `Voice recordings`.
 - Recordings are ignored by git so private audio is not committed accidentally.

@@ -4,17 +4,20 @@ import Darwin
 
 final class CameraAudioDaemon: NSObject {
   private let pollIntervalSeconds: TimeInterval = 1.0
+  private let minimumSessionDurationSeconds: TimeInterval
   private let outputDir: URL
   private var pollTimer: Timer?
   private var audioRecorder: AVAudioRecorder?
   private var activeRecordingURL: URL?
+  private var activeRecordingStartedAt: Date?
   private var isCameraInUse = false
   private var isMicPermissionGranted = false
   private let forceRecord = ProcessInfo.processInfo.environment["CAMERA_AUDIO_DAEMON_FORCE_RECORD"] == "1"
   private var lockFileDescriptor: Int32 = -1
 
-  init(outputDir: URL) {
+  init(outputDir: URL, minimumSessionDurationSeconds: TimeInterval = 60) {
     self.outputDir = outputDir
+    self.minimumSessionDurationSeconds = minimumSessionDurationSeconds
     super.init()
   }
 
@@ -133,6 +136,7 @@ final class CameraAudioDaemon: NSObject {
 
       audioRecorder = recorder
       activeRecordingURL = fileURL
+      activeRecordingStartedAt = Date()
       log("Recording started: \(fileURL.path)")
     } catch {
       log("Recording failed: \(error.localizedDescription)")
@@ -141,17 +145,34 @@ final class CameraAudioDaemon: NSObject {
 
   private func stopAudioRecording() {
     let finishedURL = activeRecordingURL
+    let startedAt = activeRecordingStartedAt
     if let recorder = audioRecorder, recorder.isRecording {
       recorder.stop()
       log("Recording stopped.")
     }
     audioRecorder = nil
     activeRecordingURL = nil
+    activeRecordingStartedAt = nil
 
-    if let finishedURL {
-      DispatchQueue.global(qos: .utility).async { [weak self] in
-        self?.normalizeRecordingIfPossible(fileURL: finishedURL)
-      }
+    guard let finishedURL else { return }
+
+    let duration = startedAt.map { Date().timeIntervalSince($0) } ?? 0
+    guard duration > minimumSessionDurationSeconds else {
+      discardShortRecording(fileURL: finishedURL, duration: duration)
+      return
+    }
+
+    DispatchQueue.global(qos: .utility).async { [weak self] in
+      self?.normalizeRecordingIfPossible(fileURL: finishedURL)
+    }
+  }
+
+  private func discardShortRecording(fileURL: URL, duration: TimeInterval) {
+    do {
+      try FileManager.default.removeItem(at: fileURL)
+      log(String(format: "Discarded short camera session %.1fs (minimum is > %.0fs): %@", duration, minimumSessionDurationSeconds, fileURL.lastPathComponent))
+    } catch {
+      log("Could not discard short recording \(fileURL.lastPathComponent): \(error.localizedDescription)")
     }
   }
 
